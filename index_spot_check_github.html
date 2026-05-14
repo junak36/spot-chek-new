@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Spot Check – Автоцистерна</title>
+
+<meta name="application-name" content="Spot Check">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spot Check">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3a5c">
+<link rel="manifest" id="manifestLink">
+<link rel="apple-touch-icon" id="pwaIcon">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #f0f2f5;
+  --card: #ffffff;
+  --border: #dde1e8;
+  --accent: #c8370a;
+  --accent2: #1a3a5c;
+  --ok: #1a7a4a;
+  --ok-bg: #e6f5ed;
+  --fail: #c0281a;
+  --fail-bg: #fdecea;
+  --text: #1a1e2a;
+  --muted: #7a8299;
+  --radius: 10px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: 'Source Sans 3', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 60px;
+  font-size: 15px;
+}
+header {
+  background: var(--accent2);
+  color: #fff;
+  padding: 0;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  box-shadow: 0 3px 16px rgba(0,0,0,0.25);
+}
+.header-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 10px;
+  border-bottom: 2px solid var(--accent);
+}
+.logo { font-size: 30px; }
+.header-text h1 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #fff;
+  line-height: 1.1;
+}
+.header-text p {
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+.header-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 16px 12px;
+}
+.meta-field label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 3px;
+}
+.meta-field input {
+  width: 100%;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #fff;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 13px;
+  outline: none;
+}
+.meta-field input::placeholder { color: rgba(255,255,255,0.3); }
+.meta-field input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(0.5); }
+
+.progress-wrap { padding: 0 16px 10px; }
+.progress-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.progress-bar {
+  height: 5px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #f5a623);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+main { padding: 14px; max-width: 760px; margin: 0 auto; }
+.section, .summary-card, .obs-card, .sig-card, .gps-card, .qr-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.sec-header {
+  display: flex;
+  align-items: center;
+  padding: 13px 14px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.sec-letter {
+  font-family: 'Oswald', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent2);
+  min-width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sec-letter.warn-bg { background: var(--accent); }
+.sec-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  flex: 1;
+  color: var(--text);
+  line-height: 1.2;
+}
+.sec-badge {
+  font-size: 11px;
+  border-radius: 20px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sec-badge.complete { background: var(--ok-bg); color: var(--ok); border-color: #b2dfca; }
+.chevron { color: var(--muted); font-size: 13px; transition: transform 0.25s; flex-shrink: 0; }
+.section.open .chevron { transform: rotate(180deg); }
+.sec-body { display: none; }
+.section.open .sec-body { display: block; }
+
+.item { border-bottom: 1px solid #f0f2f5; padding: 11px 14px; }
+.item:last-child { border-bottom: none; }
+.item-row { display: flex; align-items: flex-start; gap: 10px; }
+.item-num {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  min-width: 20px;
+  padding-top: 2px;
+  flex-shrink: 0;
+}
+.item-label { flex: 1; font-size: 14px; line-height: 1.45; color: var(--text); }
+.item-label small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-style: italic;
+}
+.btn-group { display: flex; gap: 5px; flex-shrink: 0; align-items: flex-start; }
+.sbtn {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sbtn.active-ok { background: var(--ok-bg); border-color: var(--ok); box-shadow: 0 0 0 2px rgba(26,122,74,0.2); }
+.sbtn.active-fail { background: var(--fail-bg); border-color: var(--fail); box-shadow: 0 0 0 2px rgba(192,40,26,0.2); }
+.comment-wrap { padding: 5px 14px 10px 44px; display: block; }
+.comment-wrap textarea, .comment-wrap input[type="text"] {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: #fafbfc;
+  resize: none;
+  outline: none;
+  min-height: 46px;
+}
+.comment-wrap input[type="text"] { min-height: unset; }
+.comment-label {
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pressure-wrap { padding: 5px 14px 10px 44px; }
+.pressure-row { display: flex; align-items: center; gap: 8px; }
+.pressure-wrap input {
+  width: 90px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: #fafbfc;
+  outline: none;
+}
+.pressure-unit { font-size: 12px; color: var(--muted); }
+.dates-wrap { padding: 5px 14px 10px 44px; display: flex; flex-wrap: wrap; gap: 10px; }
+.date-field { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 140px; }
+.date-field label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+}
+.date-field input[type="date"] {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: #fafbfc;
+  outline: none;
+  width: 100%;
+}
+.summary-card, .obs-card, .sig-card, .gps-card, .qr-card { padding: 16px; }
+.summary-card h3, .obs-card h3, .sig-card h3, .gps-card h3, .qr-card h3 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--accent2);
+}
+.summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.s-stat { border-radius: 8px; padding: 12px; text-align: center; }
+.s-stat.ok { background: var(--ok-bg); }
+.s-stat.fail { background: var(--fail-bg); }
+.s-stat.pending { background: #f0f2f5; }
+.s-num { font-family: 'Oswald', sans-serif; font-size: 30px; font-weight: 700; line-height: 1; }
+.s-stat.ok .s-num { color: var(--ok); }
+.s-stat.fail .s-num { color: var(--fail); }
+.s-stat.pending .s-num { color: var(--muted); }
+.s-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+.obs-card textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: #fafbfc;
+  resize: none;
+  outline: none;
+  min-height: 80px;
+}
+.sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.sig-box { display: flex; flex-direction: column; gap: 4px; }
+.sig-box label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+canvas.sig {
+  width: 100%;
+  height: 90px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: #fafbfc;
+  touch-action: none;
+  cursor: crosshair;
+  display: block;
+}
+.sig-clear {
+  font-size: 10px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: right;
+  padding: 2px 0;
+  text-decoration: underline;
+}
+.btn-photo, .btn-gps {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent2);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-family: 'Source Sans 3', sans-serif;
+  cursor: pointer;
+  border: none;
+}
+.photo-thumb {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.photo-thumb .remove-photo {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.gps-line { font-size: 13px; color: var(--text); line-height: 1.5; word-break: break-word; }
+.gps-muted { color: var(--muted); font-size: 12px; margin-top: 6px; }
+#qrcode { display: inline-block; padding: 8px; background: #fff; border: 1px solid var(--border); border-radius: 8px; }
+.qr-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.qr-info { font-size: 13px; color: var(--text); line-height: 1.5; }
+.actions { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.btn-submit {
+  background: linear-gradient(135deg, var(--accent) 0%, #e8441a 100%);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 16px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 18px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  width: 100%;
+  box-shadow: 0 4px 16px rgba(200,55,10,0.35);
+}
+.btn-print {
+  background: var(--accent2);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 13px;
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  width: 100%;
+}
+.btn-reset {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  width: 100%;
+}
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--ok);
+  color: #fff;
+  padding: 12px 22px;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 999;
+  transition: transform 0.35s ease;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.err { background: var(--fail); }
+@media print {
+  header { position: static; }
+  .sec-body { display: block !important; }
+  .actions, .btn-group, .sig-clear, .btn-photo, .btn-gps, #installBanner { display: none !important; }
+  .comment-wrap { display: block !important; }
+  .dates-wrap { display: flex !important; }
+  canvas.sig { display: none !important; }
+  .sig-print { display: block !important; }
+  .photo-thumb { width: 120px; height: 120px; }
+}
+</style>
+</head>
+
+<body>
+<div id="pdfArea">
+<header>
+  <div class="header-title-bar">
+    <div class="logo">🚛</div>
+    <div class="header-text">
+      <h1>SPOT CHECK – АВТОЦИСТЕРНА</h1>
+      <p>Обединен контролен лист · LPG Газовоз</p>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="meta-field"><label>Търговски обект</label><input type="text" id="site" placeholder="Обект / номер"></div>
+    <div class="meta-field"><label>Рег. № на МПС / Газовоз №</label><input type="text" id="regnum" placeholder="CB 0000 AB"></div>
+    <div class="meta-field"><label>Шофьор / Превозвач</label><input type="text" id="driver" placeholder="Име Презиме"></div>
+    <div class="meta-field"><label>Проверяващ</label><input type="text" id="inspector" placeholder="Име Презиме"></div>
+    <div class="meta-field"><label>Дата</label><input type="date" id="checkdate"></div>
+    <div class="meta-field"><label>Километраж</label><input type="number" id="km" placeholder="0 км"></div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-row"><span>Прогрес</span><span id="progressText">0 / 0</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+</header>
+
+<main>
+  <div class="gps-card">
+    <h3>📍 GPS локация</h3>
+    <div class="gps-line" id="gpsStatus">Локацията ще се вземе автоматично при отваряне или при изпращане.</div>
+    <div class="gps-muted" id="gpsCoords">Няма GPS данни.</div>
+    <button class="btn-gps" onclick="getGPS()">📍 Вземи GPS отново</button>
+  </div>
+
+  <div class="qr-card">
+    <h3>🔳 QR код на проверката</h3>
+    <div class="qr-row">
+      <div id="qrcode"></div>
+      <div class="qr-info">
+        <div><b>ID:</b> <span id="checkIdText"></span></div>
+        <div><b>QR съдържа:</b> ID, дата, обект, МПС и линк към Google Sheet.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="container"></div>
+
+  <div class="summary-card">
+    <h3>📊 Резюме</h3>
+    <div class="summary-grid">
+      <div class="s-stat ok"><div class="s-num" id="cntOk">0</div><div class="s-lbl">✅ Да / Добре</div></div>
+      <div class="s-stat fail"><div class="s-num" id="cntFail">0</div><div class="s-lbl">❌ Не / Проблем</div></div>
+      <div class="s-stat pending" style="grid-column:1/-1"><div class="s-num" id="cntPend">0</div><div class="s-lbl">⬜ Непопълнени</div></div>
+    </div>
+  </div>
+
+  <div class="obs-card">
+    <h3>📝 Други наблюдения</h3>
+    <textarea id="observations" placeholder="Допълнителни забележки, наблюдения, коментари..."></textarea>
+  </div>
+
+  <div class="sig-card">
+    <h3>✍️ Подписи</h3>
+    <div class="sig-grid">
+      <div class="sig-box">
+        <label>Проверил</label>
+        <canvas class="sig" id="sigInspector"></canvas>
+        <img class="sig-print" id="sigInspectorPrint" style="display:none;width:100%;height:90px;object-fit:contain;border:1px dashed var(--border);border-radius:8px;">
+        <button class="sig-clear" onclick="clearSig('sigInspector')">изчисти</button>
+      </div>
+      <div class="sig-box">
+        <label>Шофьор</label>
+        <canvas class="sig" id="sigDriver"></canvas>
+        <img class="sig-print" id="sigDriverPrint" style="display:none;width:100%;height:90px;object-fit:contain;border:1px dashed var(--border);border-radius:8px;">
+        <button class="sig-clear" onclick="clearSig('sigDriver')">изчисти</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="obs-card" id="photoCard">
+    <h3>📸 Снимки от проверката</h3>
+    <div id="photoGrid" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;"></div>
+    <label class="btn-photo" id="photoBtn">
+      <span>📷 Добави снимка</span>
+      <input type="file" id="photoInput" accept="image/*" capture="environment" multiple style="display:none" onchange="handlePhotos(this)">
+    </label>
+    <p style="font-size:11px;color:var(--muted);margin-top:8px;">Снимките ще се качат в Google Drive и линковете ще се запишат в таблицата.</p>
+  </div>
+</main>
+</div>
+
+<main>
+  <div class="actions">
+    <button class="btn-submit" onclick="submitForm()">📤 ИЗПРАТИ КЪМ GOOGLE SHEETS + PDF</button>
+    <button class="btn-print" onclick="generatePDF()">📄 ГЕНЕРИРАЙ PDF</button>
+    <button class="btn-print" onclick="window.print()">🖨️ ПРИНТ / PDF</button>
+    <button class="btn-reset" onclick="resetAll()">🔄 Нулирай всички отговори</button>
+  </div>
+</main>
+
+<div class="toast" id="toast">✅ Проверката е запазена!</div>
+
+<script>
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbz2yiQIWSCSjbQfx9DlFuzvivIsTconAuXmNn6vSEfQDuJhBV3zzpRG4ewHGEcStwuysg/exec';
+const DRIVE_FOLDER_ID = '1ENHA4jKl84c-eDqUTjibktsEcHDXFlOV';
+const SHEET_PUBLIC_URL = 'https://docs.google.com/spreadsheets/d/18BxCITEwsfGYNuopwQIwzsFXBmC3pzwXPbDHIOLdPKE/edit?gid=0#gid=0';
+
+const checkId = 'SC-' + new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0,14) + '-' + Math.random().toString(36).slice(2,6).toUpperCase();
+document.getElementById('checkIdText').textContent = checkId;
+
+let gps = { lat:'', lng:'', accuracy:'', mapUrl:'', timestamp:'' };
+
+const SECTIONS = [
+  { letter:'A', label:'ОБЩА ПРОВЕРКА НА МПС', items:[
+    { id:'A1', q:'Общо състояние на превозното средство', hint:'Без признаци на повреда, чистота, налични бариери срещу прегазване', comment:true },
+    { id:'A2', q:'Състояние на кабина', hint:'Предно стъкло, прозорци, огледала, предпазен колан', comment:true },
+    { id:'A3', q:'Състояние на чистачките на предното стъкло', comment:true },
+    { id:'A4', q:'Състояние на гумите, съобразени със сезона', comment:true },
+    { id:'A5', q:'Наличие на необходимите знаци', hint:'ADR, опасност от експлозия, забрана за телефон/пушене', comment:true },
+    { id:'A6', q:'Пожарогасители – кабина/ремарке', hint:'Наличие, дата на изтичане', comment:true, dates:[{id:'A6d1', label:'Дата на изтичане'}] },
+    { id:'A7', q:'Тахограф – наличност, режим работа и почивка, престой', comment:true },
+    { id:'A8', q:'Маркуч, макара и резбови накрайници', hint:'Износване и херметичност', comment:true },
+    { id:'A9', q:'Достъпът до резервоара е подходящ?', hint:'Без нужда от катерене, резервоарът не е твърде отдалечен', comment:true },
+    { id:'A10', q:'Клинове за колелата – налични?', hint:'2 бр. на колело', comment:true },
+    { id:'A11', q:'Паркинг спирачка', hint:'Активиране, аларма за заден ход', comment:true }
+  ]},
+  { letter:'B', label:'ДОКУМЕНТИ', items:[
+    { id:'B1', q:'Шофьорска книжка, АДР удостоверение', hint:'Наличност, дата на изтичане', comment:true, dates:[{id:'B1d1', label:'Шофьорска книжка – изтича'},{id:'B1d2', label:'АДР удостоверение – изтича'}] },
+    { id:'B2', q:'Застраховане – Каско, ГО', hint:'Наличност, дата на изтичане', comment:true, dates:[{id:'B2d1', label:'Каско – изтича'},{id:'B2d2', label:'ГО – изтича'}] },
+    { id:'B3', q:'Инструкция за товарене и разтоварване', hint:'Наръчник на шофьора, животоспасяващи правила, Инструкция', comment:true },
+    { id:'B4', q:'Сертификат за калибрация на тахографа', hint:'Наличност, дата на изтичане', comment:true, dates:[{id:'B4d1', label:'Сертификат – изтича'}] },
+    { id:'B5', q:'Тахограф – показва данни, скорост, работни часове', hint:'Да се вземе разпечатка', comment:true },
+    { id:'B6', q:'Информационен лист за безопасност (LPG / Пропан-Бутан), TREM карта', hint:'Актуалност', comment:true },
+    { id:'B7', q:'Пълен комплект АДР документи', hint:'Списък с контакти при авария, наръчник, АДР на цистерна, протоколи за маркучи и клапани, инструкция АДР 1.8.3', comment:true }
+  ]},
+  { letter:'C', label:'ADR ТЕХНИКА И ОБОРУДВАНЕ', items:[
+    { id:'C1', q:'2 бр. самостоятелно стоящи знаци', hint:'Оранжеви клинове, ADR лампа, отразяващи конуси, предупредителни триъгълници', comment:true },
+    { id:'C2', q:'Ръчно фенерче за шофьора', hint:'Наличие, работи', comment:true },
+    { id:'C3', q:'Светлоотразяваща жилетка', hint:'Задължителна при доставка', comment:true }
+  ]},
+  { letter:'D', label:'HSSE ОСВЕДОМЕНОСТ НА ВОДАЧА', items:[
+    { id:'D1', q:'Последният LTI (злополука с нараняване) – запознат ли е водачът?', hint:'Уточнете: в бизнеса изобщо, в компанията или при Превозвача', comment:true },
+    { id:'D2', q:'Последно обучение на водача', hint:'Тема, дата, полезност', comment:true, dates:[{id:'D2d1', label:'Дата на обучение'}] },
+    { id:'D3', q:'Действия при пожар на обекта', hint:'Уточнете сценария: с цистерната, с административна сграда, с автогазстанция', comment:true }
+  ]},
+  { letter:'E', label:'ПРОЦЕС НА РАЗТОВАРВАНЕ', items:[
+    { id:'E1', q:'Няма риск от повреда при влизане/излизане от обекта', comment:true },
+    { id:'E2', q:'И двата резервоара са ясно видими за водача по време на разтоварване?', comment:true },
+    { id:'E3', q:'Автоцистерната е обърната към аварийния маршрут за евакуация?', comment:true },
+    { id:'E4', q:'Превозното средство е фиксирано, конусите са на място', hint:'Ръчна спирачка и защити', comment:true },
+    { id:'E5', q:'Пожарогасители поставени до цистерната преди разтоварване', comment:true },
+    { id:'E6', q:'Лични предпазни средства – поставени и в добро състояние', hint:'Панталон/яке, ръкавици, обувки, очила, светлоотразителна жилетка', comment:true },
+    { id:'E7', q:'Резервоар, нивомер, тръбопроводи и клапани проверени преди разтоварване', hint:'Съгласно процедурата', comment:true },
+    { id:'E8', q:'Кранове за течна и газова фази проверени преди разтоварване', comment:true },
+    { id:'E9', q:'Заземяване и заземителен кабел използвани по време на разтоварване', comment:true },
+    { id:'E10', q:'Нивото на пълнене се следи непрекъснато', hint:'Не надвишава 85%', comment:true },
+    { id:'E11', q:'Всички уплътнения и затвори поставени след завършване на процеса', comment:true }
+  ]},
+  { letter:'F', label:'ПОВЕДЕНИЕ И ДРУГИ', items:[
+    { id:'F1', q:'Признаци на тютюнопушене в кабината?', hint:'При ДА – отбележи като проблем', comment:true },
+    { id:'F2', q:'Водачът е в подходящо умствено и физическо здравословно състояние?', hint:'Преминал медицински преглед', comment:true, dates:[{id:'F2d1', label:'Дата на медицински преглед'}] },
+    { id:'F3', q:'Водачът се ангажира с клиента по подходящ начин?', comment:true },
+    { id:'F4', q:'Телефонът на водача е изключен по време на доставката?', comment:true },
+    { id:'F5', q:'При оплаквания или въпроси от клиента – водачът съдейства', comment:true },
+    { id:'F6', q:'По искане на клиента – водачът показва показанията на разходомера', hint:'Дисплей преди/след разтоварване', comment:true },
+    { id:'F7', q:'Водачът може да обясни метода на превръщане на данните', hint:'Плътност, температура, литри, килограма', comment:true },
+    { id:'F8', q:'Документацията по доставката е добре попълнена и четлива', hint:'Литровата бележка – изчерпателно попълнена!', comment:true },
+    { id:'F9', q:'Водачът внимава за защита на активите на клиента', hint:'Проследяване по време на доставката', comment:true }
+  ]},
+  { letter:'G', label:'ОБЕКТ ЗА ПРОДАЖБА НА ДРЕБНО', infoOnly:true, items:[
+    { id:'G1', q:'Брой на газовите колонки', type:'text', placeholder:'напр. 2' },
+    { id:'G2', q:'Основният ценови тотем включва ли ВНГ?', type:'text', placeholder:'Да / Не / Коментар' },
+    { id:'G3', q:'Самостоятелното обслужване е възможно?', type:'text', placeholder:'Да / Не / Коментар' }
+  ]},
+  { letter:'⚡', label:'АВАРИЙНО-БЛОКИРАЩА СИСТЕМА', accent:true, items:[
+    { id:'H1', q:'Аварийни бутони – работят', comment:true },
+    { id:'H2', q:'Ключ-маса – изправен', comment:true },
+    { id:'H3', q:'Спирателна система и защита срещу потегляне при доставка', comment:true },
+    { id:'H4', q:'Звукова сигнализация при заден ход', comment:true }
+  ]},
+  { letter:'🔒', label:'ХЕРМЕТИЧЕН ДЪНЕН КЛАПАН (ГЕСТРА)', accent:true, items:[
+    { id:'I1', q:'Дънен клапан – херметичен, без пропуски', comment:true }
+  ]},
+  { letter:'💨', label:'ПРОПУСКИ НА ВВГ', accent:true, items:[
+    { id:'J1', q:'Газови маркучи – без пропуски', comment:true },
+    { id:'J2', q:'Резервоар – без пропуски', comment:true },
+    { id:'J3', q:'Газово оборудване – без пропуски', comment:true },
+    { id:'J4', q:'Износени резби на накрайници', hint:'Отбележи ако има', comment:true },
+    { id:'J5', q:'Деформации по маркучи', hint:'Отбележи ако има', comment:true },
+    { id:'J6', q:'Деформации по резервоар', hint:'Отбележи ако има', comment:true }
+  ]},
+  { letter:'💡', label:'СЧУПЕНИ ИЛИ НЕИЗПРАВНИ СВЕТЛИНИ', accent:true, items:[
+    { id:'K1', q:'Всички светлини са изправни', comment:true }
+  ]},
+  { letter:'🛞', label:'ГУМИ И КОЛЕЛА (РАЗШИРЕНА ПРОВЕРКА)', accent:true, items:[
+    { id:'L1', q:'Износени гуми, неотговарящи на зимна обстановка', hint:'Отбележи ако има', comment:true },
+    { id:'L2', q:'Липсващи болтове или крепежни елементи', hint:'Отбележи ако има', comment:true }
+  ]},
+  { letter:'⚡', label:'ЕЛЕКТРИЧЕСКИ КАБЕЛИ И ОБОРУДВАНЕ (АДР)', accent:true, items:[
+    { id:'M1', q:'Кабели – съответстват на АДР изискванията', hint:'Без висящи, свободни или скъсани кабели', comment:true },
+    { id:'M2', q:'Заземителен кабел – наличен и изправен', comment:true }
+  ]},
+  { letter:'🔧', label:'БАЙПАСНИ КЛАПАНИ', accent:true, items:[
+    { id:'N1', q:'Външен байпасен клапан – работи', pressure:true, pressureId:'pressN1', pressureLabel:'Отваря на (бара):', comment:true },
+    { id:'N2', q:'Вътрешен байпасен клапан – работи', pressure:true, pressureId:'pressN2', pressureLabel:'Отваря на (бара):', comment:true }
+  ]}
+];
+
+const state = {};
+let photos = [];
+
+function build() {
+  const container = document.getElementById('container');
+  SECTIONS.forEach((sec, sIdx) => {
+    sec.items.forEach(item => {
+      if (!sec.infoOnly && item.type !== 'text') state[item.id] = { val: null, comment: '' };
+      if (sec.infoOnly || item.type === 'text') state[item.id] = '';
+      if (item.pressure) state[item.pressureId] = '';
+      if (item.dates) item.dates.forEach(d => { state[d.id] = ''; });
+    });
+
+    const div = document.createElement('div');
+    div.className = 'section open';
+    div.id = `sec-${sIdx}`;
+    const letterClass = sec.accent ? 'sec-letter warn-bg' : 'sec-letter';
+    const totalQ = sec.infoOnly ? 0 : sec.items.filter(i => i.type !== 'text').length;
+
+    let html = `
+      <div class="sec-header" onclick="toggleSec(${sIdx})">
+        <div class="${letterClass}">${sec.letter}</div>
+        <div class="sec-title">${sec.label}</div>
+        ${totalQ > 0 ? `<div class="sec-badge" id="badge-${sIdx}">0/${totalQ}</div>` : ''}
+        <div class="chevron">▾</div>
+      </div>
+      <div class="sec-body">`;
+
+    sec.items.forEach(item => {
+      if (sec.infoOnly || item.type === 'text') {
+        html += `
+          <div class="item">
+            <div class="item-row">
+              <div class="item-num">${item.id.replace(/[A-Z]/g,'')}</div>
+              <div class="item-label">${item.q}</div>
+            </div>
+            <div class="comment-wrap">
+              <input type="text" placeholder="${item.placeholder || 'Въведи отговор...'}" oninput="setInfo('${item.id}', this.value)">
+            </div>
+          </div>`;
+      } else if (item.pressure) {
+        html += `
+          <div class="item">
+            <div class="item-row">
+              <div class="item-num">${item.id.replace(/[A-Z]/g,'')}</div>
+              <div class="item-label">${item.q}${item.hint ? `<small>${item.hint}</small>` : ''}</div>
+              <div class="btn-group">
+                <button class="sbtn" id="ok-${item.id}" onclick="setVal('${item.id}','ok',${sIdx})" title="Да">✅</button>
+                <button class="sbtn" id="fail-${item.id}" onclick="setVal('${item.id}','fail',${sIdx})" title="Не">❌</button>
+              </div>
+            </div>
+            <div class="pressure-wrap">
+              <div class="pressure-row">
+                <span class="pressure-unit">${item.pressureLabel || 'Стойност:'}</span>
+                <input type="number" step="0.1" placeholder="0.0" id="${item.pressureId}" oninput="state['${item.pressureId}']=this.value">
+                <span class="pressure-unit">бара</span>
+              </div>
+            </div>
+            <div class="comment-wrap">
+              <div class="comment-label">Коментар</div>
+              <textarea rows="2" placeholder="Забележка..." oninput="state['${item.id}'].comment=this.value"></textarea>
+            </div>
+          </div>`;
+      } else {
+        const datesHtml = item.dates ? `
+          <div class="dates-wrap">
+            ${item.dates.map(d => `
+              <div class="date-field">
+                <label>${d.label}</label>
+                <input type="date" id="${d.id}" oninput="state['${d.id}']=this.value">
+              </div>`).join('')}
+          </div>` : '';
+
+        html += `
+          <div class="item">
+            <div class="item-row">
+              <div class="item-num">${item.id.replace(/[A-Z]/g,'')}</div>
+              <div class="item-label">${item.q}${item.hint ? `<small>${item.hint}</small>` : ''}</div>
+              <div class="btn-group">
+                <button class="sbtn" id="ok-${item.id}" onclick="setVal('${item.id}','ok',${sIdx})" title="Да">✅</button>
+                <button class="sbtn" id="fail-${item.id}" onclick="setVal('${item.id}','fail',${sIdx})" title="Не">❌</button>
+              </div>
+            </div>
+            ${datesHtml}
+            <div class="comment-wrap">
+              <div class="comment-label">Коментар</div>
+              <textarea rows="2" placeholder="Забележка..." oninput="state['${item.id}'].comment=this.value"></textarea>
+            </div>
+          </div>`;
+      }
+    });
+
+    html += `</div>`;
+    div.innerHTML = html;
+    container.appendChild(div);
+  });
+
+  updateProgress();
+  updateSummary();
+}
+
+function toggleSec(idx) {
+  document.getElementById(`sec-${idx}`).classList.toggle('open');
+}
+
+function setVal(id, val, sIdx) {
+  if (!state[id]) return;
+  const prev = state[id].val;
+  state[id].val = (prev === val) ? null : val;
+
+  ['ok','fail'].forEach(v => {
+    const btn = document.getElementById(`${v}-${id}`);
+    if (btn) btn.classList.remove(`active-${v}`);
+  });
+
+  if (state[id].val) {
+    const btn = document.getElementById(`${state[id].val}-${id}`);
+    if (btn) btn.classList.add(`active-${state[id].val}`);
+  }
+
+  updateProgress();
+  updateBadge(sIdx);
+  updateSummary();
+}
+
+function setInfo(id, val) { state[id] = val; }
+
+function updateBadge(sIdx) {
+  const sec = SECTIONS[sIdx];
+  if (!sec || sec.infoOnly) return;
+  const q = sec.items.filter(i => i.type !== 'text' && state[i.id]);
+  const done = q.filter(i => state[i.id].val !== null).length;
+  const total = q.length;
+  const badge = document.getElementById(`badge-${sIdx}`);
+  if (badge) {
+    badge.textContent = `${done}/${total}`;
+    badge.className = done === total ? 'sec-badge complete' : 'sec-badge';
+  }
+}
+
+function updateProgress() {
+  const ids = Object.keys(state).filter(k => state[k] && typeof state[k] === 'object' && 'val' in state[k]);
+  const total = ids.length;
+  const done = ids.filter(k => state[k].val !== null).length;
+  document.getElementById('progressText').textContent = `${done} / ${total}`;
+  document.getElementById('progressFill').style.width = total ? `${(done / total) * 100}%` : '0%';
+}
+
+function updateSummary() {
+  const vals = Object.values(state).filter(v => v && typeof v === 'object' && 'val' in v).map(v => v.val);
+  document.getElementById('cntOk').textContent = vals.filter(v => v === 'ok').length;
+  document.getElementById('cntFail').textContent = vals.filter(v => v === 'fail').length;
+  document.getElementById('cntPend').textContent = vals.filter(v => v === null).length;
+}
+
+function resetAll() {
+  if (!confirm('Сигурен ли сте, че искате да нулирате всички отговори?')) return;
+  Object.keys(state).forEach(k => {
+    if (state[k] && typeof state[k] === 'object' && 'val' in state[k]) {
+      state[k] = { val: null, comment: '' };
+      ['ok','fail'].forEach(v => {
+        const btn = document.getElementById(`${v}-${k}`);
+        if (btn) btn.classList.remove(`active-${v}`);
+      });
+    } else {
+      state[k] = '';
+    }
+  });
+  document.querySelectorAll('textarea').forEach(t => t.value = '');
+  document.querySelectorAll('input[type="text"], input[type="number"]').forEach(i => i.value = '');
+  document.querySelectorAll('input[type="date"]').forEach(i => i.value = '');
+  document.getElementById('checkdate').valueAsDate = new Date();
+  photos = [];
+  renderPhotos();
+  updateProgress();
+  updateSummary();
+  SECTIONS.forEach((_, i) => updateBadge(i));
+}
+
+function getGPS() {
+  const status = document.getElementById('gpsStatus');
+  const coords = document.getElementById('gpsCoords');
+
+  if (!navigator.geolocation) {
+    status.textContent = 'GPS не се поддържа от този браузър.';
+    coords.textContent = 'Няма GPS данни.';
+    return;
+  }
+
+  status.textContent = 'Взимане на GPS локация... Разрешете достъп, ако браузърът попита.';
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      gps.lat = pos.coords.latitude.toFixed(6);
+      gps.lng = pos.coords.longitude.toFixed(6);
+      gps.accuracy = Math.round(pos.coords.accuracy);
+      gps.timestamp = new Date().toLocaleString('bg-BG');
+      gps.mapUrl = `https://www.google.com/maps?q=${gps.lat},${gps.lng}`;
+
+      status.textContent = 'GPS локацията е записана.';
+      coords.innerHTML = `Ширина: <b>${gps.lat}</b>, Дължина: <b>${gps.lng}</b>, Точност: <b>${gps.accuracy} м</b><br><a href="${gps.mapUrl}" target="_blank">Отвори в Google Maps</a>`;
+
+      updateQR();
+    },
+    err => {
+      status.textContent = 'GPS не беше разрешен или не може да бъде взет.';
+      coords.textContent = err.message || 'Няма GPS данни.';
+    },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+  );
+}
+
+function updateQR() {
+  const qrEl = document.getElementById('qrcode');
+  qrEl.innerHTML = '';
+
+  const qrPayload = {
+    checkId,
+    date: document.getElementById('checkdate').value || '',
+    site: document.getElementById('site').value || '',
+    regnum: document.getElementById('regnum').value || '',
+    inspector: document.getElementById('inspector').value || '',
+    gps: gps.mapUrl || '',
+    sheet: SHEET_PUBLIC_URL
+  };
+
+  new QRCode(qrEl, {
+    text: JSON.stringify(qrPayload),
+    width: 120,
+    height: 120
+  });
+}
+
+['site','regnum','inspector','checkdate'].forEach(id => {
+  window.addEventListener('load', () => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateQR);
+  });
+});
+
+function handlePhotos(input) {
+  const files = Array.from(input.files);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      photos.push({ file, dataUrl: e.target.result });
+      renderPhotos();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderPhotos() {
+  const grid = document.getElementById('photoGrid');
+  grid.innerHTML = '';
+  photos.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'photo-thumb';
+    div.innerHTML = `
+      <img src="${p.dataUrl}">
+      <button class="remove-photo" onclick="removePhoto(${i})">✕</button>`;
+    grid.appendChild(div);
+  });
+}
+
+function removePhoto(idx) {
+  photos.splice(idx, 1);
+  renderPhotos();
+}
+
+async function uploadPhotos() {
+  if (photos.length === 0) return [];
+
+  const links = [];
+  const regnum = document.getElementById('regnum').value || 'неизвестен';
+  const dateVal = document.getElementById('checkdate').value || new Date().toISOString().slice(0,10);
+
+  for (let i = 0; i < photos.length; i++) {
+    const p = photos[i];
+    const base64 = p.dataUrl.split(',')[1];
+    const mimeType = p.file.type || 'image/jpeg';
+    const fileName = `${dateVal}_${regnum}_${checkId}_снимка${i + 1}.jpg`;
+
+    try {
+      const resp = await fetch(SHEETS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'uploadPhoto',
+          folderId: DRIVE_FOLDER_ID,
+          fileName,
+          mimeType,
+          base64
+        })
+      });
+
+      const result = await resp.json();
+      if (result.success) {
+        links.push(result.url);
+      } else {
+        links.push(`Грешка при снимка ${i + 1}`);
+      }
+    } catch(err) {
+      links.push(`Грешка при снимка ${i + 1}`);
+    }
+  }
+
+  return links;
+}
+
+function buildHeaders() {
+  const headers = [
+    'ID проверка', 'Дата запис', 'Час запис', 'Търговски обект', 'Рег. №',
+    'Шофьор / Превозвач', 'Проверяващ', 'Дата на проверка', 'Километраж',
+    'GPS Latitude', 'GPS Longitude', 'GPS точност', 'GPS карта', 'GPS timestamp'
+  ];
+
+  SECTIONS.forEach(sec => {
+    sec.items.forEach(item => {
+      const prefix = item.id + ' – ';
+      if (sec.infoOnly || item.type === 'text') {
+        headers.push(prefix + item.q);
+      } else {
+        headers.push(prefix + item.q);
+        headers.push(prefix + item.q + ' (коментар)');
+      }
+      if (item.dates) item.dates.forEach(d => headers.push(item.id + ' – ' + d.label));
+      if (item.pressure) headers.push(item.id + ' – ' + (item.pressureLabel || 'Налягане'));
+    });
+  });
+
+  headers.push('Други наблюдения');
+  headers.push('Брой снимки');
+  headers.push('Снимки');
+  headers.push('QR данни');
+  return headers;
+}
+
+function buildRow(photoLinks = []) {
+  const now = new Date();
+
+  const row = [
+    checkId,
+    now.toLocaleDateString('bg-BG'),
+    now.toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'}),
+    document.getElementById('site').value || '',
+    document.getElementById('regnum').value || '',
+    document.getElementById('driver').value || '',
+    document.getElementById('inspector').value || '',
+    document.getElementById('checkdate').value || '',
+    document.getElementById('km').value || '',
+    gps.lat || '',
+    gps.lng || '',
+    gps.accuracy || '',
+    gps.mapUrl || '',
+    gps.timestamp || ''
+  ];
+
+  SECTIONS.forEach(sec => {
+    sec.items.forEach(item => {
+      if (sec.infoOnly || item.type === 'text') {
+        row.push(state[item.id] || '');
+      } else {
+        const s = state[item.id];
+        row.push(s ? (s.val === 'ok' ? 'ДА' : s.val === 'fail' ? 'НЕ' : '–') : '–');
+        row.push(s ? (s.comment || '') : '');
+      }
+      if (item.dates) item.dates.forEach(d => row.push(state[d.id] || ''));
+      if (item.pressure) row.push(state[item.pressureId] || '');
+    });
+  });
+
+  const qrPayload = {
+    checkId,
+    site: document.getElementById('site').value || '',
+    regnum: document.getElementById('regnum').value || '',
+    gps: gps.mapUrl || '',
+    sheet: SHEET_PUBLIC_URL
+  };
+
+  row.push(document.getElementById('observations').value || '');
+  row.push(photos.length);
+  row.push(photoLinks.length > 0 ? photoLinks.join(', ') : '');
+  row.push(JSON.stringify(qrPayload));
+
+  return row;
+}
+
+async function submitForm() {
+  const total = Object.keys(state).filter(k => state[k] && typeof state[k] === 'object' && 'val' in state[k]).length;
+  const done = Object.keys(state).filter(k => state[k] && typeof state[k] === 'object' && state[k].val !== null).length;
+
+  if (done < total) {
+    if (!confirm(`Има ${total - done} непопълнени точки. Искате ли да продължите?`)) return;
+  }
+
+  const btn = document.querySelector('.btn-submit');
+  btn.disabled = true;
+
+  if (!gps.lat) {
+    btn.textContent = '📍 Взима се GPS...';
+    await new Promise(resolve => {
+      if (!navigator.geolocation) return resolve();
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          gps.lat = pos.coords.latitude.toFixed(6);
+          gps.lng = pos.coords.longitude.toFixed(6);
+          gps.accuracy = Math.round(pos.coords.accuracy);
+          gps.timestamp = new Date().toLocaleString('bg-BG');
+          gps.mapUrl = `https://www.google.com/maps?q=${gps.lat},${gps.lng}`;
+          document.getElementById('gpsStatus').textContent = 'GPS локацията е записана.';
+          document.getElementById('gpsCoords').innerHTML = `Ширина: <b>${gps.lat}</b>, Дължина: <b>${gps.lng}</b>, Точност: <b>${gps.accuracy} м</b><br><a href="${gps.mapUrl}" target="_blank">Отвори в Google Maps</a>`;
+          updateQR();
+          resolve();
+        },
+        () => resolve(),
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      );
+    });
+  }
+
+  let photoLinks = [];
+  if (photos.length > 0) {
+    btn.textContent = `⏳ Качват се ${photos.length} снимки...`;
+    photoLinks = await uploadPhotos();
+  }
+
+  btn.textContent = '⏳ Изпраща се към Google Sheets...';
+
+  const payload = {
+    headers: buildHeaders(),
+    row: buildRow(photoLinks),
+    folderId: DRIVE_FOLDER_ID
+  };
+
+  fetch(SHEETS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  })
+  .then(resp => resp.json())
+  .then(async result => {
+    if (!result.success) throw new Error(result.error || 'Unknown error');
+
+    showToast('✅ Записано в Google Sheets!', false);
+    btn.textContent = '📄 Генерира се PDF...';
+
+    await generatePDF();
+
+    btn.textContent = '✅ ИЗПРАТЕНО + PDF!';
+    btn.style.background = 'linear-gradient(135deg, #1a7a4a, #25a366)';
+    setTimeout(() => {
+      btn.textContent = '📤 ИЗПРАТИ КЪМ GOOGLE SHEETS + PDF';
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 4000);
+  })
+  .catch(err => {
+    showToast('❌ Грешка при изпращане: ' + err.message, true);
+    btn.textContent = '📤 ИЗПРАТИ КЪМ GOOGLE SHEETS + PDF';
+    btn.disabled = false;
+  });
+}
+
+async function generatePDF() {
+  updateQR();
+  document.querySelectorAll('.section').forEach(s => s.classList.add('open'));
+
+  const area = document.getElementById('pdfArea');
+  const canvas = await html2canvas(area, {
+    scale: 1.4,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#f0f2f5'
+  });
+
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'a4');
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+  const imgWidth = pageWidth;
+  const imgHeight = canvas.height * imgWidth / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+
+  const dateVal = document.getElementById('checkdate').value || new Date().toISOString().slice(0,10);
+  const regnum = (document.getElementById('regnum').value || 'МПС').replace(/[^\wа-яА-Я-]/g, '_');
+  pdf.save(`${dateVal}_${regnum}_${checkId}_Spot_Check.pdf`);
+}
+
+function showToast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast${err ? ' err' : ''} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function initSig(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  const printImg = document.getElementById(canvasId + 'Print');
+  let drawing = false;
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.strokeStyle = '#1a3a5c';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+  }
+
+  function syncPrint() {
+    if (printImg) printImg.src = canvas.toDataURL('image/png');
+  }
+
+  canvas.addEventListener('mousedown', e => {
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  });
+
+  canvas.addEventListener('mouseup', () => { drawing = false; syncPrint(); });
+  canvas.addEventListener('mouseleave', () => { drawing = false; syncPrint(); });
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', () => { drawing = false; syncPrint(); });
+}
+
+function clearSig(id) {
+  const canvas = document.getElementById(id);
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const printImg = document.getElementById(id + 'Print');
+  if (printImg) printImg.src = '';
+}
+
+function generateIcon() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 192;
+  canvas.height = 192;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#1a3a5c';
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(0, 0, 192, 192, 32);
+  else ctx.rect(0, 0, 192, 192);
+  ctx.fill();
+  ctx.font = '100px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🚛', 96, 96);
+  return canvas.toDataURL('image/png');
+}
+
+function setupPWA() {
+  const iconUrl = generateIcon();
+  document.getElementById('pwaIcon').href = iconUrl;
+
+  const manifest = {
+    name: 'Spot Check – Автоцистерна',
+    short_name: 'Spot Check',
+    description: 'Контролен лист за проверка на автоцистерна',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#f0f2f5',
+    theme_color: '#1a3a5c',
+    orientation: 'portrait',
+    icons: [
+      { src: iconUrl, sizes: '192x192', type: 'image/png' },
+      { src: iconUrl, sizes: '512x512', type: 'image/png' }
+    ]
+  };
+
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  document.getElementById('manifestLink').href = URL.createObjectURL(blob);
+}
+
+setupPWA();
+build();
+initSig('sigInspector');
+initSig('sigDriver');
+document.getElementById('checkdate').valueAsDate = new Date();
+updateQR();
+
+setTimeout(() => {
+  getGPS();
+}, 700);
+</script>
+</body>
+</html>
